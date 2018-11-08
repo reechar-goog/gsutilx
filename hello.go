@@ -27,26 +27,15 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
-	"github.com/c-bata/go-prompt"
+	"github.com/reechar-goog/go-prompt"
 	spin "github.com/tj/go-spin"
 	"google.golang.org/api/iterator"
 )
 
-func completer(d prompt.Document) []prompt.Suggest {
-	s := []prompt.Suggest{
-		{Text: "users", Description: ""},
-		{Text: "articles", Description: ""},
-		{Text: "comments", Description: ""},
-	}
-	return prompt.FilterContains(s, d.GetWordBeforeCursor(), true)
-	// prompt.FilterContains()
-	// prompt.Suggest
-}
-
 func stringToSuggest(input string) prompt.Suggest {
 	var result prompt.Suggest
 	// result := new(prompt.Suggest)
-	result.Text = input
+	result.Text = "gs://" + input
 	return result
 }
 
@@ -86,20 +75,34 @@ func gen(suggests []prompt.Suggest) func(prompt.Document) []prompt.Suggest {
 	var result = func(d prompt.Document) []prompt.Suggest {
 		return prompt.FilterContains(suggests, d.GetWordBeforeCursor(), true)
 	}
+
 	return result
 }
 
-func completer2(d prompt.Document) []prompt.Suggest {
-	s := []prompt.Suggest{
-		{Text: "users", Description: ""},
-		{Text: "articles", Description: ""},
-		{Text: "comments", Description: ""},
+func dummyExecutor(in string) {
+	ctx := context.Background()
+	client, err := storage.NewClient(ctx)
+	if err != nil {
+		log.Fatalf("%v", err)
 	}
-	return prompt.FilterContains(s, d.GetWordBeforeCursor(), true)
-	// prompt.FilterContains()
-	// prompt.Suggest
+	fmt.Printf("Getting: %v", in)
+	// q := storage.Query{Delimiter: "/"
+	q := storage.Query{}
+	bucket := client.Bucket(strings.Replace(in, "gs://", "", 1))
+	objects := bucket.Objects(ctx, &q)
+	for {
+		obj, err := objects.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			// TODO: Handle error.
+			log.Fatalf("%v", err)
+		}
+		fmt.Println(obj.Name)
+		// results = append(results, bucketAttrs.Name)
+	}
 }
-
 func main() {
 	// fmt.Println("Please select table.")
 	// t := prompt.Input("> ", completer)
@@ -112,10 +115,82 @@ func main() {
 	// 	getBuckets(project)
 	// }
 
-	buckets := getAllBuckets()
+	// buckets := getAllBuckets()
+
+	buckets := []string{
+		"p-reech-api-tf10-api-police",
+		"p-reechar-terraform",
+		"artifacts.reechar-kubernetes.appspot.com",
+		"mrmavtest",
+		"reechar-dumb-transfer",
+		"databunker-reechar-pubsub",
+		"dataflow-staging-us-central1-967354505112",
+		"eu.artifacts.thermal-cathode-170521.appspot.com",
+		"euro-bucket-reechar-london",
+		"recserve_thermal-cathode-170521",
+		"reechar-billing-test-export",
+		"reechar-cap-one-test",
+		"reechar-data-transfer-test",
+		"reechar-stage-dbpub",
+		"reechar-test-1",
+		"reechar-test-auth",
+		"reechar-utility",
+		"staging.thermal-cathode-170521.appspot.com",
+		"thermal-cathode-170521",
+		"thermal-cathode-170521-daisy-bkt",
+		"thermal-cathode-170521-data-115553",
+		"thermal-cathode-170521-terraform-master",
+		"thermal-cathode-170521.appspot.com",
+		"us.artifacts.thermal-cathode-170521.appspot.com",
+	}
 	suggests := mymap(buckets, stringToSuggest)
-	t := prompt.Input("> ", gen(suggests))
-	fmt.Println("You selected " + t)
+	pt := prompt.New(dummyExecutor, gen(suggests), prompt.OptionShowCompletionAtStart(), prompt.OptionPrefix("Select a bucket >"))
+
+	dummyExecutor(pt.Input())
+
+	// prompt := promptui.Select{
+	// 	Label: "Select Day",
+	// 	Items: []string{"Monday", "Tuesday", "Wednesday", "Thursday", "Friday",
+	// 		"Saturday", "Sunday"},
+	// }
+
+	// _, result, err := prompt.Run()
+
+	// if err != nil {
+	// 	fmt.Printf("Prompt failed %v\n", err)
+	// 	return
+	// }
+
+	// fmt.Printf("You choose %q\n", result)
+
+	// items := []string{"Vim", "Emacs", "Sublime", "VSCode", "Atom"}
+	// index := -1
+	// var result string
+	// var err error
+
+	// for index < 0 {
+	// 	prompt := promptui.SelectWithAdd{
+	// 		Label:    "What's your text editor",
+	// 		Items:    items,
+	// 		AddLabel: "Add your own",
+	// 	}
+
+	// 	index, result, err = prompt.Run()
+	// 	prompt.
+
+	// 	if index == -1 {
+	// 		items = append(items, result)
+	// 	}
+	// }
+
+	// if err != nil {
+	// 	fmt.Printf("Prompt failed %v\n", err)
+	// 	return
+	// }
+
+	// fmt.Printf("You choose %s\n", result)
+
+	// fmt.Println("You selected " + t)
 	// for _, bucket := range buckets {
 	// 	fmt.Println(bucket)
 	// }
@@ -167,6 +242,8 @@ func getBuckets(projectID string) []string {
 		log.Fatalf("%v", err)
 	}
 	buckets := client.Buckets(ctx, projectID)
+	// storage.Query.
+	// client.Bucket("sd").Objects
 	// buckets.
 	for {
 		bucketAttrs, err := buckets.Next()
